@@ -18,6 +18,9 @@ import { ScheduleDay } from '../schedule.model';
 import { CalendarEventActionsService } from '../../calendar-integration/calendar-event-actions.service';
 import { registerLocaleData } from '@angular/common';
 import localeSv from '@angular/common/locales/sv';
+import { selectMapOfAllTasksInActiveProjects } from '../../tasks/store/task.selectors';
+import { selectStartOfNextDayDiffMs } from '../../../root-store/app-state/app-state.selectors';
+import { DEFAULT_TASK, Task } from '../../tasks/task.model';
 
 describe('ScheduleComponent', () => {
   const mockLocalization = signal({ firstDayOfWeek: 1, dateTimeLocale: 'en-US' });
@@ -130,9 +133,18 @@ describe('ScheduleComponent', () => {
       ],
     }).compileComponents();
 
+    const store = TestBed.inject(MockStore);
+    store.overrideSelector(selectMapOfAllTasksInActiveProjects, new Map());
+    store.overrideSelector(selectStartOfNextDayDiffMs, 0);
+
     fixture = TestBed.createComponent(ScheduleComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+  });
+
+  afterEach(() => {
+    fixture.destroy();
+    TestBed.inject(MockStore).resetSelectors();
   });
 
   describe('headerTitle computed', () => {
@@ -1158,12 +1170,6 @@ describe('ScheduleComponent', () => {
       hidden.setHidden([]);
     });
 
-    // overrideSelector mutates the selector itself, so always reset to avoid
-    // leaking provider lists into unrelated tests later in the file.
-    afterEach(() => {
-      TestBed.inject(MockStore).resetSelectors();
-    });
-
     it('should be false when no providers are enabled', () => {
       const store = TestBed.inject(MockStore);
       store.overrideSelector(selectCalendarProviders, []);
@@ -1458,24 +1464,41 @@ describe('ScheduleComponent', () => {
 
   describe('deadlineTasksByDay computed', () => {
     it('groups tasks with deadlines by their deadline day', fakeAsync(() => {
-      const mockTasksMap = new Map([
-        ['task-1', { id: 'task-1', title: 'Deadline task 1', deadlineDay: '2026-01-20', isDone: false }],
-        ['task-2', { id: 'task-2', title: 'Deadline task 2', deadlineDay: '2026-01-21', isDone: false }],
-        ['task-3', { id: 'task-3', title: 'Task without deadline', isDone: false }],
+      const mockTasksMap = new Map<string, Task>([
+        [
+          'task-1',
+          {
+            ...DEFAULT_TASK,
+            id: 'task-1',
+            projectId: 'project-1',
+            title: 'Deadline task 1',
+            deadlineDay: '2026-01-20',
+          },
+        ],
+        [
+          'task-2',
+          {
+            ...DEFAULT_TASK,
+            id: 'task-2',
+            projectId: 'project-1',
+            title: 'Deadline task 2',
+            deadlineDay: '2026-01-21',
+          },
+        ],
+        [
+          'task-3',
+          {
+            ...DEFAULT_TASK,
+            id: 'task-3',
+            projectId: 'project-1',
+            title: 'Task without deadline',
+          },
+        ],
       ]);
 
       const store = TestBed.inject(MockStore);
-      store.setState({
-        issueProvider: { ids: [], entities: {} },
-        root: {
-          appState: {
-            startOfNextDayDiffMs: 0,
-          },
-        },
-        tasks: {
-          allTasksInActiveProjects: mockTasksMap,
-        },
-      });
+      store.overrideSelector(selectMapOfAllTasksInActiveProjects, mockTasksMap);
+      store.refreshState();
 
       fixture.detectChanges();
       tick();
@@ -1487,23 +1510,33 @@ describe('ScheduleComponent', () => {
     }));
 
     it('skips done tasks when grouping deadlines', fakeAsync(() => {
-      const mockTasksMap = new Map([
-        ['task-1', { id: 'task-1', title: 'Pending deadline', deadlineDay: '2026-01-20', isDone: false }],
-        ['task-2', { id: 'task-2', title: 'Completed deadline', deadlineDay: '2026-01-20', isDone: true }],
+      const mockTasksMap = new Map<string, Task>([
+        [
+          'task-1',
+          {
+            ...DEFAULT_TASK,
+            id: 'task-1',
+            projectId: 'project-1',
+            title: 'Pending deadline',
+            deadlineDay: '2026-01-20',
+          },
+        ],
+        [
+          'task-2',
+          {
+            ...DEFAULT_TASK,
+            id: 'task-2',
+            projectId: 'project-1',
+            title: 'Completed deadline',
+            deadlineDay: '2026-01-20',
+            isDone: true,
+          },
+        ],
       ]);
 
       const store = TestBed.inject(MockStore);
-      store.setState({
-        issueProvider: { ids: [], entities: {} },
-        root: {
-          appState: {
-            startOfNextDayDiffMs: 0,
-          },
-        },
-        tasks: {
-          allTasksInActiveProjects: mockTasksMap,
-        },
-      });
+      store.overrideSelector(selectMapOfAllTasksInActiveProjects, mockTasksMap);
+      store.refreshState();
 
       fixture.detectChanges();
       tick();

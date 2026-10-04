@@ -35,6 +35,7 @@ import { formatScheduleDragPreviewLabel } from './format-schedule-drag-preview-l
 import { truncate } from '../../../util/truncate';
 import { LS } from '../../../core/persistence/storage-keys.const';
 import { CalendarEventActionsService } from '../../calendar-integration/calendar-event-actions.service';
+import { TaskCopy } from '../../tasks/task.model';
 
 const D_HOURS = 24;
 const DEFAULT_ROW_HEIGHT_PX = 9;
@@ -90,7 +91,7 @@ export class ScheduleWeekComponent implements OnInit, AfterViewInit, OnDestroy {
   workStartEnd = input<{ workStartRow: number; workEndRow: number } | null>(null);
   currentTimeRow = input<number | null>(null);
   todayDateStr = input<string | undefined>(undefined);
-  deadlineTasksByDay = input<Record<string, any[]> | null>(null);
+  deadlineTasksByDay = input<Record<string, TaskCopy[]> | null>(null);
   isCtrlPressed = signal<boolean>(false);
   isTaskDragActive = input<boolean>(false);
   scheduleRowHeightPx = signal<number>(readStoredScheduleRowHeight());
@@ -221,7 +222,7 @@ export class ScheduleWeekComponent implements OnInit, AfterViewInit, OnDestroy {
   deadlineTooltips = computed(() =>
     this.deadlineStats().map((stats) => {
       if (stats.count === 0) return '';
-      const titles = stats.tasks.map((t: any) => t.title).join(', ');
+      const titles = stats.tasks.map((task) => task.title).join(', ');
       return this._translateService.instant(
         stats.count === 1
           ? T.F.SCHEDULE.DEADLINE_TASKS_TOOLTIP_ONE

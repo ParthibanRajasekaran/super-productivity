@@ -13,6 +13,7 @@ import { ScheduleEvent } from '../schedule.model';
 import { SVEType } from '../schedule.const';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
+import { DEFAULT_TASK, TaskCopy } from '../../tasks/task.model';
 
 describe('ScheduleMonthComponent', () => {
   let component: ScheduleMonthComponent;
@@ -745,12 +746,12 @@ describe('ScheduleMonthComponent deadline tasks', () => {
   });
 
   it('should get deadline tasks for a specific day', () => {
-    const deadlineTasks = [
-      { id: 'task-1', title: 'Deadline 1' },
-      { id: 'task-2', title: 'Deadline 2' },
+    const deadlineTasks: TaskCopy[] = [
+      { ...DEFAULT_TASK, id: 'task-1', projectId: 'project-1', title: 'Deadline 1' },
+      { ...DEFAULT_TASK, id: 'task-2', projectId: 'project-1', title: 'Deadline 2' },
     ];
     fixture.componentRef.setInput('deadlineTasksByDay', {
-      '2026-01-15': deadlineTasks,
+      ['2026-01-15']: deadlineTasks,
     });
 
     const result = component.getDeadlineTasksForDay('2026-01-15');
@@ -760,7 +761,9 @@ describe('ScheduleMonthComponent deadline tasks', () => {
 
   it('should return empty array for day with no deadline tasks', () => {
     fixture.componentRef.setInput('deadlineTasksByDay', {
-      '2026-01-15': [{ id: 'task-1', title: 'Deadline 1' }],
+      ['2026-01-15']: [
+        { ...DEFAULT_TASK, id: 'task-1', projectId: 'project-1', title: 'Deadline 1' },
+      ],
     });
 
     const result = component.getDeadlineTasksForDay('2026-01-16');

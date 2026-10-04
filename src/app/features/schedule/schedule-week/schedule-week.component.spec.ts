@@ -100,11 +100,11 @@ describe('ScheduleWeekComponent', () => {
   it('should compute deadline badge stats for days with deadline tasks', () => {
     fixture.componentRef.setInput('daysToShow', ['2026-05-11', '2026-05-12']);
     fixture.componentRef.setInput('deadlineTasksByDay', {
-      '2026-05-11': [
+      ['2026-05-11']: [
         { id: 'task-1', title: 'Deadline 1' },
         { id: 'task-2', title: 'Deadline 2' },
       ],
-      '2026-05-12': [{ id: 'task-3', title: 'Deadline 3' }],
+      ['2026-05-12']: [{ id: 'task-3', title: 'Deadline 3' }],
     });
 
     expect(fixture.componentInstance.deadlineStats()[0].count).toBe(2);
@@ -114,7 +114,7 @@ describe('ScheduleWeekComponent', () => {
   it('should render the deadline badge with flag icon for days with deadlines', () => {
     fixture.componentRef.setInput('daysToShow', ['2026-05-11']);
     fixture.componentRef.setInput('deadlineTasksByDay', {
-      '2026-05-11': [{ id: 'task-1', title: 'Important deadline' }],
+      ['2026-05-11']: [{ id: 'task-1', title: 'Important deadline' }],
     });
 
     fixture.detectChanges();

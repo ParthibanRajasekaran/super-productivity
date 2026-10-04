@@ -14,6 +14,7 @@ import { parseDbDateStr } from 'src/app/util/parse-db-date-str';
 import { TranslatePipe, TranslateService, TranslateStore } from '@ngx-translate/core';
 import { getPluralKey } from '../../../util/get-plural-key';
 import { PlannerDeadlineTaskComponent } from '../../planner/planner-deadline-task/planner-deadline-task.component';
+import { TaskCopy } from '../../tasks/task.model';
 
 // `grid-template-rows` repeats `var(--nr-of-weeks)`, which otherwise resolves to
 // the static 6 declared on `schedule`. At 5 weeks that leaves a sixth, empty row
@@ -43,7 +44,7 @@ export class ScheduleMonthComponent {
   readonly daysToShow = input<string[]>([]);
   readonly weeksToShow = input<number>(6);
   readonly firstDayOfWeek = input<number>(1);
-  readonly deadlineTasksByDay = input<Record<string, any[]> | null>(null);
+  readonly deadlineTasksByDay = input<Record<string, TaskCopy[]> | null>(null);
 
   // Generate weekday headers based on firstDayOfWeek setting
   readonly weekdayHeaders = computed(() => {
@@ -112,7 +113,7 @@ export class ScheduleMonthComponent {
     return this._scheduleService.getEventsForDay(day, this.events() || []);
   }
 
-  getDeadlineTasksForDay(day: string): any[] {
+  getDeadlineTasksForDay(day: string): TaskCopy[] {
     const deadlinesByDay = this.deadlineTasksByDay() || {};
     return deadlinesByDay[day] || [];
   }

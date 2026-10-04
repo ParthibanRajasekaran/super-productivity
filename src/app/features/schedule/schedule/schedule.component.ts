@@ -294,10 +294,7 @@ export class ScheduleComponent {
     { initialValue: 0 },
   );
   deadlineTasksByDay = computed(() =>
-    groupDeadlineTasksByDay(
-      this._allTasksMap().values(),
-      this._startOfNextDayDiffMs(),
-    ),
+    groupDeadlineTasksByDay(this._allTasksMap().values(), this._startOfNextDayDiffMs()),
   );
 
   private _workStartEndHours = toSignal(
