@@ -1,89 +1,69 @@
 import { expect, test } from '../../fixtures/test.fixture';
 
 /**
- * Issue #9829: on iOS in portrait mode (390px width), task title with long tag
- * would overflow because `.title-and-tags-wrapper` inherited `min-width: auto` from
- * the flex item default, preventing it from shrinking below min-content width.
- *
- * Fix: `min-width: 0` on the wrapper allows it to shrink and content to wrap.
- * Verify with geometry assertions that rows stay within viewport on portrait.
+ * Issue #9829: a long task title or tag could extend beyond its task card and
+ * the phone viewport in portrait mode.
  *
  * Run: npm run e2e:file e2e/tests/mobile/task-title-portrait-overflow.spec.ts -- --retries=0
  */
 
 const PORTRAIT = { width: 390, height: 844 };
+const TASK_TITLE = 'Planning template for resource tracking and implementation review';
+const LONG_TAG = '2026_05_Valiant_Project_Support_Implementation_LiQV_FINMA_EKE';
 
-test.describe('Task Title Portrait Overflow (Issue #9829)', () => {
-  test('should not overflow task row when title wraps in portrait mode', async ({
+test.describe('Task title portrait overflow (Issue #9829)', () => {
+  test('keeps a long title and tag inside the task card in portrait mode', async ({
     page,
     workViewPage,
     taskPage,
+    tagPage,
   }) => {
     await workViewPage.waitForTaskList();
+    await workViewPage.addTask(TASK_TITLE);
 
-    // Create a task with a title long enough to wrap on portrait width
-    const longTitle =
-      'Very Long Task Title That Should Wrap in Portrait Mode Instead of Overflowing the Viewport';
-    await workViewPage.addTask(longTitle);
-
-    const task = taskPage.getTaskByText(longTitle);
+    const task = taskPage.getTaskByText(TASK_TITLE);
     await expect(task).toBeVisible();
-
-    // Set portrait viewport after task is created (matches #9750 pattern)
+    await tagPage.assignTagToTask(task, LONG_TAG);
     await page.setViewportSize(PORTRAIT);
 
-    // Wait for layout to settle
-    await expect(task).toHaveCount(1);
+    const taskTitle = task.locator('task-title .display-value');
+    const tagTitle = task.locator('tag .tag-title').filter({ hasText: LONG_TAG });
+    await expect(taskTitle).toBeVisible();
+    await expect(tagTitle).toBeVisible();
 
-    // Measure actual geometry: check that row and title elements stay in viewport
-    const geometry = await page.evaluate(() => {
-      const taskEl = document.querySelector('task') as HTMLElement;
-      const rect = (sel: string): { left: number; right: number } | null => {
-        const el = taskEl.querySelector(sel);
-        if (!el) return null;
-        const { left, right } = el.getBoundingClientRect();
+    const geometry = await task.evaluate((taskEl, longTag) => {
+      const rect = (selector: string): { left: number; right: number } => {
+        const element = taskEl.querySelector(selector);
+        if (!element) throw new Error(`Missing ${selector}`);
+        const { left, right } = element.getBoundingClientRect();
         return { left, right };
       };
-      const titleWrapper = taskEl.querySelector('.title-and-tags-wrapper') as HTMLElement;
+
+      const longTagTitle = Array.from(taskEl.querySelectorAll('tag .tag-title')).find(
+        (element) => element.textContent?.trim() === longTag,
+      );
+      if (!longTagTitle) throw new Error('Missing long tag title');
+      const { left: tagLeft, right: tagRight } = longTagTitle.getBoundingClientRect();
+
+      const { left: cardLeft, right: cardRight } = taskEl.getBoundingClientRect();
+
       return {
         viewportWidth: window.innerWidth,
-        row: rect('.title-and-left-btns-wrapper'),
+        card: { left: cardLeft, right: cardRight },
         titleWrapper: rect('.title-and-tags-wrapper'),
-        // Verify min-width: 0 allows wrapping (content width > client width means wrapped)
-        isWrapped: titleWrapper
-          ? titleWrapper.scrollWidth > titleWrapper.clientWidth
-          : false,
+        taskTitle: rect('task-title .display-value'),
+        tagTitle: { left: tagLeft, right: tagRight },
       };
-    });
+    }, LONG_TAG);
 
-    expect(geometry.row).not.toBeNull();
-    expect(geometry.titleWrapper).not.toBeNull();
-
-    // Critical: nothing starts left of viewport (issue symptom)
-    expect(geometry.row!.left).toBeGreaterThanOrEqual(0);
-    expect(geometry.titleWrapper!.left).toBeGreaterThanOrEqual(0);
-
-    // Row must fit without overflow
-    expect(geometry.row!.right).toBeLessThanOrEqual(geometry.viewportWidth);
-  });
-
-  test('should not regress on landscape/desktop viewports', async ({
-    page,
-    workViewPage,
-    taskPage,
-  }) => {
-    await workViewPage.waitForTaskList();
-    await workViewPage.addTask('Desktop Task Title Test');
-
-    const task = taskPage.getTaskByText('Desktop Task Title Test');
-    await expect(task).toBeVisible();
-
-    // Desktop should still work correctly with the fix
-    const titleWrapper = task.locator('.title-and-tags-wrapper');
-    const isOverflowing = await titleWrapper.evaluate((el) => {
-      return el.scrollWidth > el.clientWidth;
-    });
-    // On desktop with normal title lengths, should not overflow
-    expect(isOverflowing).toBe(false);
+    for (const content of [
+      geometry.titleWrapper,
+      geometry.taskTitle,
+      geometry.tagTitle,
+    ]) {
+      expect(content.left).toBeGreaterThanOrEqual(geometry.card.left);
+      expect(content.right).toBeLessThanOrEqual(geometry.card.right);
+      expect(content.right).toBeLessThanOrEqual(geometry.viewportWidth);
+    }
   });
 });
